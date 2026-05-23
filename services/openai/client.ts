@@ -1,81 +1,90 @@
-/**
- * Minimal fetch-based OpenAI Chat Completions client.
- * Avoids the `openai` SDK so we keep the bundle slim and stay runtime-agnostic
- * (works in both Node and Edge runtimes).
- */
 import { env } from "@/lib/env";
 
 export type ChatMessage = {
-    role: "system" | "user" | "assistant";
-    content: string;
+  role: "user" | "model";
+  content: string;
 };
 
 export type ChatCompletionOptions = {
-    messages: ChatMessage[];
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    /** Optional abort signal for caller-side timeouts */
-    signal?: AbortSignal;
+  messages: ChatMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
 };
 
-export class OpenAIError extends Error {
-    constructor(
-        message: string,
-        public readonly status?: number,
-        public readonly body?: unknown
-    ) {
-        super(message);
-        this.name = "OpenAIError";
-    }
+export class GeminiError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly body?: unknown
+  ) {
+    super(message);
+    this.name = "GeminiError";
+  }
 }
 
-/**
- * Call the OpenAI Chat Completions endpoint and return the first message text.
- * Throws `OpenAIError` on non-2xx responses or missing API key.
- */
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+
 export async function chatCompletion(
-    opts: ChatCompletionOptions
+  opts: ChatCompletionOptions
 ): Promise<string> {
-    if (!env.OPENAI_API_KEY) {
-        throw new OpenAIError("OPENAI_API_KEY is not configured");
+  const GEMINI_API_KEY = (env as { GEMINI_API_KEY?: string }).GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    throw new GeminiError("GEMINI_API_KEY is not configured");
+  }
+
+  const prompt = opts.messages
+    .map((m) => m.content)
+    .join("\n");
+
+  const body = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature: opts.temperature ?? 0.4,
+      maxOutputTokens: opts.maxTokens ?? 400,
+    },
+  };
+
+  const res = await fetch(
+    `${GEMINI_URL}?key=${env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+      cache: "no-store",
     }
+  );
 
-    const url = `${env.OPENAI_BASE_URL}/chat/completions`;
-    const body = {
-        model: opts.model ?? env.OPENAI_MODEL,
-        messages: opts.messages,
-        temperature: opts.temperature ?? 0.4,
-        max_tokens: opts.maxTokens ?? 400,
-    };
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    throw new GeminiError(
+      `Gemini request failed (${res.status})`,
+      res.status,
+      errBody
+    );
+  }
 
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(body),
-        signal: opts.signal,
-        // Route handlers are uncached by default, but be explicit:
-        cache: "no-store",
-    });
+  const json = await res.json();
 
-    if (!res.ok) {
-        const errBody = await res.text().catch(() => "");
-        throw new OpenAIError(
-            `OpenAI request failed (${res.status})`,
-            res.status,
-            errBody
-        );
-    }
+  const text =
+    json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
-    const json = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = json.choices?.[0]?.message?.content?.trim();
-    if (!text) {
-        throw new OpenAIError("OpenAI returned an empty completion", res.status, json);
-    }
-    return text;
+  if (!text) {
+    throw new GeminiError(
+      "Gemini returned empty response",
+      res.status,
+      json
+    );
+  }
+
+  return text;
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -8,6 +9,7 @@
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
+<<<<<<< HEAD
 !.yarn/versions
 
 # testing
@@ -39,3 +41,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+=======
+!.yarn/sdks
+!.yarn/versions
+
+# Vite files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.vite/
+>>>>>>> b66b4e18aa31b260d05819a64755067bd2d86b3b

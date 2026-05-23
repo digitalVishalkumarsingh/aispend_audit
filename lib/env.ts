@@ -1,41 +1,46 @@
 /**
  * Centralized, lazy-evaluated env access.
- * All API keys are optional at boot — the corresponding feature degrades to a
- * fallback path when its key is absent (e.g. AI summary → deterministic fallback,
- * email → no-op). This keeps `next build` from blowing up in CI without secrets.
+ * Missing services gracefully degrade instead of crashing the app.
  */
 
 function read(name: string): string | undefined {
-    const v = process.env[name];
-    return v && v.trim().length > 0 ? v.trim() : undefined;
+  const v = process.env[name];
+  return v && v.trim().length > 0 ? v.trim() : undefined;
 }
 
 export const env = {
-    // LLM
-    OPENAI_API_KEY: read("OPENAI_API_KEY"),
-    OPENAI_MODEL: read("OPENAI_MODEL") ?? "gpt-4o-mini",
-    OPENAI_BASE_URL: read("OPENAI_BASE_URL") ?? "https://api.openai.com/v1",
+  // Gemini AI
+  GEMINI_API_KEY: read("GEMINI_API_KEY"),
 
-    // Email
-    RESEND_API_KEY: read("RESEND_API_KEY"),
-    RESEND_FROM_EMAIL: read("RESEND_FROM_EMAIL") ?? "StackSave <hello@stacksave.app>",
+  // Email
+  RESEND_API_KEY: read("RESEND_API_KEY"),
+  RESEND_FROM_EMAIL:
+    read("RESEND_FROM_EMAIL") ??
+    "StackSave <onboarding@resend.dev>",
 
-    // Database (reserved for future swap to real backend)
-    DATABASE_URL: read("DATABASE_URL"),
+  // Database
+  MONGODB_URI:
+    read("MONGODB_URI") ??
+    "mongodb://localhost:27017/aiaudit",
 
-    // App
-    APP_URL: read("NEXT_PUBLIC_APP_URL") ?? "https://stacksave.app",
-    NODE_ENV: read("NODE_ENV") ?? "development",
+  // App
+  APP_URL:
+    read("NEXT_PUBLIC_APP_URL") ??
+    "https://aispendaudit-tau.vercel.app",
+
+  NODE_ENV: read("NODE_ENV") ?? "development",
 } as const;
 
-export function hasOpenAI(): boolean {
-    return Boolean(env.OPENAI_API_KEY);
+// Feature flags
+
+export function hasGemini(): boolean {
+  return Boolean(env.GEMINI_API_KEY);
 }
 
 export function hasResend(): boolean {
-    return Boolean(env.RESEND_API_KEY);
+  return Boolean(env.RESEND_API_KEY);
 }
 
 export function isProd(): boolean {
-    return env.NODE_ENV === "production";
+  return env.NODE_ENV === "production";
 }
