@@ -78,13 +78,10 @@ export async function POST(
     }
 
     const generateFn =
-      (aiSummary as any).generateAuditSummary ??
-      (aiSummary as any).default;
+      aiSummary.generateAuditSummary ??
+      aiSummary.default;
 
     const { summary, source } = await generateFn(audit);
-
-    const responseSource =
-      source === "gemini" ? "openai" : source;
 
     await updateAuditSummary(
       auditId,
