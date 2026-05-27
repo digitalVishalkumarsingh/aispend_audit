@@ -14,7 +14,7 @@ type Props = {
 };
 
 type State =
-  | { kind: "idle"; text: string; source?: "openai" | "fallback" }
+  | { kind: "idle"; text: string; source?: "openai" | "fallback" | "gemini" }
   | { kind: "loading" }
   | { kind: "error"; message: string };
 
