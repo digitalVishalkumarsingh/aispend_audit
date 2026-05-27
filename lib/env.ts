@@ -21,7 +21,7 @@ export const env = {
   // Database
   MONGODB_URI:
     read("MONGODB_URI") ??
-   "mongodb+srv://digitalvishalkrsingh:Vishal221002@cluster0.z8bp2.mongodb.net/aiaudit",
+    "mongodb://localhost:27017/aiaudit",
 
   // App
   APP_URL:
